@@ -21,6 +21,10 @@ class TestBucketConfig:
         with pytest.raises(ValueError, match="refill_rate"):
             BucketConfig(capacity=5.0, refill_rate=-1.0)
 
+    def test_zero_refill_raises(self):
+        with pytest.raises(ValueError, match="refill_rate"):
+            BucketConfig(capacity=5.0, refill_rate=0.0)
+
 
 # ---------------------------------------------------------------------------
 # RateLimiter behaviour
@@ -63,6 +67,12 @@ class TestRateLimiter:
     def test_available_decreases_after_consume(self, limiter):
         limiter.allow("pipe-d")
         assert limiter.available_tokens("pipe-d") < 3.0
+
+    def test_available_tokens_never_exceeds_capacity(self, limiter):
+        """Tokens reported for an idle pipeline should not exceed bucket capacity."""
+        time.sleep(0.01)  # let time pass; bucket should stay capped at capacity
+        tokens = limiter.available_tokens("idle-pipe")
+        assert tokens <= 3.0
 
     def test_reset_restores_full_bucket(self, limiter):
         for _ in range(3):
