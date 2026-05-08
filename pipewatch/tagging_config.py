@@ -19,13 +19,28 @@ def tagging_registry_from_json(source: Union[str, Path]) -> TagRegistry:
             "reports": ["team:bi"]
           }
         }
+
+    Raises
+    ------
+    FileNotFoundError
+        If *source* looks like a file path (has a ``.json`` suffix) but does not exist.
+    json.JSONDecodeError
+        If the resolved content is not valid JSON.
     """
     path = Path(source)
+    if path.suffix.lower() == ".json" and not path.exists():
+        raise FileNotFoundError(f"Tagging config file not found: {path}")
     if path.exists():
         raw = path.read_text(encoding="utf-8")
     else:
         raw = str(source)
-    return registry_from_dict(json.loads(raw))
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise json.JSONDecodeError(
+            f"Invalid JSON in tagging config: {exc.msg}", exc.doc, exc.pos
+        ) from exc
+    return registry_from_dict(data)
 
 
 def default_registry() -> TagRegistry:
